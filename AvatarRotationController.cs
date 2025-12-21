@@ -5,7 +5,6 @@ using UnityEngine;
 [DefaultExecutionOrder(-10)]
 public class AvatarRotationController : MonoBehaviour
 {
-
     public float smoothFactor = 0.1f;
     public float scrollRotationSpeed = 100f;
     public float mouseRotationSpeed = 5f;
@@ -21,12 +20,14 @@ public class AvatarRotationController : MonoBehaviour
     GameObject bubbleGO;
     MonoBehaviour avatarScaleController;
     AvatarAnimatorController controller;
-    FieldInfo controllerDragLockTimer;
-    FieldInfo controllerMouseHeld;
-    MethodInfo controllerSetDragging;
+    FieldInfo dragLockTimerField;
+    FieldInfo mouseHeldField;
+    MethodInfo setDraggingMethod;
     AvatarWindowHandler avatarWindowHandler;
-    FieldInfo targetCamera;
+    FieldInfo targetCameraField;
     Camera targetCameraOrigin;
+    AvatarBigScreenHandler avatarBigScreenHandler;
+    FieldInfo isBigScreenActiveField;
 
     void Start()
     {
@@ -53,7 +54,7 @@ public class AvatarRotationController : MonoBehaviour
 
         if (!currentModel) return;
 
-        if (suppressFrame) targetCamera.SetValue(avatarWindowHandler, targetCameraOrigin);
+        if (suppressFrame) targetCameraField.SetValue(avatarWindowHandler, targetCameraOrigin);
 
 
         bool leftBtn = Input.GetMouseButton(0);
@@ -67,13 +68,16 @@ public class AvatarRotationController : MonoBehaviour
         else if (isHolding)
         {
             isHolding = false;
-            controllerDragLockTimer.SetValue(controller, 0f);
-            controllerMouseHeld.SetValue(controller, true);
-            controller.BlockDraggingOverride = false;
-
-            if (leftBtn)
+            var isBigScreenActive = (bool)isBigScreenActiveField.GetValue(avatarBigScreenHandler);
+            if (!isBigScreenActive)
             {
-                controllerSetDragging.Invoke(controller, new object[] { true });
+                dragLockTimerField.SetValue(controller, 0f);
+                mouseHeldField.SetValue(controller, true);
+                controller.BlockDraggingOverride = false;
+                if (leftBtn)
+                {
+                    setDraggingMethod.Invoke(controller, new object[] { true });
+                }
             }
         }
 
@@ -95,7 +99,7 @@ public class AvatarRotationController : MonoBehaviour
         {
             avatarScaleController.enabled = false;
 
-            targetCamera.SetValue(avatarWindowHandler, null);
+            targetCameraField.SetValue(avatarWindowHandler, null);
             suppressFrame = true;
 
             targetRotation = targetRotation + mouse * mouseRotationSpeed;
@@ -120,15 +124,18 @@ public class AvatarRotationController : MonoBehaviour
     void OnAvatarSwitch()
     {
         controller = currentModel.GetComponent<AvatarAnimatorController>();
-        controllerDragLockTimer = typeof(AvatarAnimatorController).GetField("dragLockTimer", BindingFlags.Instance | BindingFlags.NonPublic);
-        controllerMouseHeld = typeof(AvatarAnimatorController).GetField("mouseHeld", BindingFlags.Instance | BindingFlags.NonPublic);
-        controllerSetDragging = typeof(AvatarAnimatorController).GetMethod("SetDragging", BindingFlags.Instance | BindingFlags.NonPublic);
+        dragLockTimerField = typeof(AvatarAnimatorController).GetField("dragLockTimer", BindingFlags.Instance | BindingFlags.NonPublic);
+        mouseHeldField = typeof(AvatarAnimatorController).GetField("mouseHeld", BindingFlags.Instance | BindingFlags.NonPublic);
+        setDraggingMethod = typeof(AvatarAnimatorController).GetMethod("SetDragging", BindingFlags.Instance | BindingFlags.NonPublic);
 
         bubbleGO = currentModel.GetComponent<AvatarBubbleHandler>().attachTarget;
 
         avatarWindowHandler = currentModel.GetComponent<AvatarWindowHandler>();
-        targetCamera = typeof(AvatarWindowHandler).GetField("targetCamera", BindingFlags.Instance | BindingFlags.Public);
-        targetCameraOrigin = (Camera)targetCamera.GetValue(avatarWindowHandler);
+        targetCameraField = typeof(AvatarWindowHandler).GetField("targetCamera", BindingFlags.Instance | BindingFlags.Public);
+        targetCameraOrigin = (Camera)targetCameraField.GetValue(avatarWindowHandler);
+
+        avatarBigScreenHandler = currentModel.GetComponent<AvatarBigScreenHandler>();
+        isBigScreenActiveField = typeof(AvatarBigScreenHandler).GetField("isBigScreenActive", BindingFlags.Instance | BindingFlags.NonPublic);
     }
 
     void UpdateCurrentAvatar()
