@@ -1,5 +1,5 @@
 ﻿using Kirurobo;
-using System.Reflection;
+using MEHelper;
 using UnityEngine;
 
 [DefaultExecutionOrder(-10)]
@@ -9,53 +9,52 @@ public class AvatarRotationController : MonoBehaviour
     public float scrollRotationSpeed = 100f;
     public float mouseRotationSpeed = 5f;
 
-    float avatarScanInterval = 0.25f;
-    float nextAvatarScan;
     bool suppressFrame;
     float targetRotation;
     bool isHolding;
     Vector3 lastMousePos;
-    Transform modelRoot;
     GameObject currentModel;
     GameObject bubbleGO;
     MonoBehaviour avatarScaleController;
     AvatarAnimatorController controller;
-    FieldInfo dragLockTimerField;
-    FieldInfo mouseHeldField;
-    MethodInfo setDraggingMethod;
     AvatarWindowHandler avatarWindowHandler;
-    FieldInfo targetCameraField;
     Camera targetCameraOrigin;
-    AvatarBigScreenHandler avatarBigScreenHandler;
-    FieldInfo isBigScreenActiveField;
+    Camera trackingCam;
+    Vector3 mirroredMainCamPos;
 
+    void OnEnable()
+    {
+        CurrentModel.OnAvatarSwitch += OnAvatarSwitch;
+    }
     void Start()
     {
-        var settings = GameObject.FindAnyObjectByType<AvatarScaleController>();
-        avatarScaleController = settings.GetComponent<AvatarScaleController>();
-
-        var modelRootGO = GameObject.Find("Model");
-        if (modelRootGO != null)
-            modelRoot = modelRootGO.transform;
+        trackingCam = transform.GetComponentInChildren<Camera>(true);
+        trackingCam.nearClipPlane = Camera.main.nearClipPlane;
+        mirroredMainCamPos = new Vector3(
+            Camera.main.transform.position.x, 
+            Camera.main.transform.position.y,
+            CurrentModel.ModelRoot.position.z - Camera.main.transform.position.z
+        );
     }
-
     void Update()
     {
-
         if (MenuActions.IsMovementBlocked()) return;
 
         if (UniWindowController.current.isClickThrough && !isHolding) return;
 
-        if (Time.unscaledTime >= nextAvatarScan)
-        {
-            UpdateCurrentAvatar();
-            nextAvatarScan = Time.unscaledTime + avatarScanInterval;
-        }
-
         if (!currentModel) return;
 
-        if (suppressFrame) targetCameraField.SetValue(avatarWindowHandler, targetCameraOrigin);
+        if (suppressFrame) avatarWindowHandler.targetCamera = targetCameraOrigin;
 
+        var modelRotation = CurrentModel.GameObject.transform.rotation.eulerAngles.y;
+        if (modelRotation <= 65f || modelRotation >= 295f)
+        {
+            trackingCam.transform.position = mirroredMainCamPos;
+        }
+        else
+        {
+            trackingCam.transform.position = Camera.main.transform.position;
+        }
 
         bool leftBtn = Input.GetMouseButton(0);
         bool alt = Input.GetKey(KeyCode.LeftAlt);
@@ -68,15 +67,15 @@ public class AvatarRotationController : MonoBehaviour
         else if (isHolding)
         {
             isHolding = false;
-            var isBigScreenActive = (bool)isBigScreenActiveField.GetValue(avatarBigScreenHandler);
+            var isBigScreenActive = CurrentModel.C<AvatarBigScreenHandler>.Get<bool>("isBigScreenActive");
             if (!isBigScreenActive)
             {
-                dragLockTimerField.SetValue(controller, 0f);
-                mouseHeldField.SetValue(controller, true);
+                CurrentModel.C<AvatarAnimatorController>.Set("dragLockTimer", 0f);
+                CurrentModel.C<AvatarAnimatorController>.Set("mouseHeld", true);
                 controller.BlockDraggingOverride = false;
                 if (leftBtn)
                 {
-                    setDraggingMethod.Invoke(controller, new object[] { true });
+                    CurrentModel.C<AvatarAnimatorController>.Call("SetDragging", true);
                 }
             }
         }
@@ -99,7 +98,7 @@ public class AvatarRotationController : MonoBehaviour
         {
             avatarScaleController.enabled = false;
 
-            targetCameraField.SetValue(avatarWindowHandler, null);
+            avatarWindowHandler.targetCamera = null;
             suppressFrame = true;
 
             targetRotation = targetRotation + mouse * mouseRotationSpeed;
@@ -120,38 +119,21 @@ public class AvatarRotationController : MonoBehaviour
 
         avatarScaleController.enabled = true;
     }
-
+    void OnDisable()
+    {
+        CurrentModel.OnAvatarSwitch -= OnAvatarSwitch;
+    }
     void OnAvatarSwitch()
     {
-        controller = currentModel.GetComponent<AvatarAnimatorController>();
-        dragLockTimerField = typeof(AvatarAnimatorController).GetField("dragLockTimer", BindingFlags.Instance | BindingFlags.NonPublic);
-        mouseHeldField = typeof(AvatarAnimatorController).GetField("mouseHeld", BindingFlags.Instance | BindingFlags.NonPublic);
-        setDraggingMethod = typeof(AvatarAnimatorController).GetMethod("SetDragging", BindingFlags.Instance | BindingFlags.NonPublic);
+        currentModel = CurrentModel.GameObject;
 
-        bubbleGO = currentModel.GetComponent<AvatarBubbleHandler>().attachTarget;
+        controller = CurrentModel.GetComponent<AvatarAnimatorController>();
+        avatarScaleController = CurrentModel.GetComponent<AvatarScaleController>();
 
-        avatarWindowHandler = currentModel.GetComponent<AvatarWindowHandler>();
-        targetCameraField = typeof(AvatarWindowHandler).GetField("targetCamera", BindingFlags.Instance | BindingFlags.Public);
-        targetCameraOrigin = (Camera)targetCameraField.GetValue(avatarWindowHandler);
+        bubbleGO = CurrentModel.GetComponent<AvatarBubbleHandler>().attachTarget;
+        avatarWindowHandler = CurrentModel.GetComponent<AvatarWindowHandler>();
+        targetCameraOrigin = avatarWindowHandler.targetCamera;
 
-        avatarBigScreenHandler = currentModel.GetComponent<AvatarBigScreenHandler>();
-        isBigScreenActiveField = typeof(AvatarBigScreenHandler).GetField("isBigScreenActive", BindingFlags.Instance | BindingFlags.NonPublic);
-    }
-
-    void UpdateCurrentAvatar()
-    {
-        if (!modelRoot) return;
-
-        for (int i = 0; i < modelRoot.childCount; i++)
-        {
-            var child = modelRoot.GetChild(i).gameObject;
-            if (!child.activeInHierarchy) continue;
-            if (currentModel == child) return;
-            currentModel = child;
-
-            OnAvatarSwitch();
-
-            return;
-        }
+        CurrentModel.C<AvatarMouseTracking>.F["mainCam"] = trackingCam;
     }
 }
