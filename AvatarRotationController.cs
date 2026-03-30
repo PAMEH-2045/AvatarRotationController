@@ -1,5 +1,4 @@
 ﻿using Kirurobo;
-using MEHelper;
 using UnityEngine;
 
 [DefaultExecutionOrder(-10)]
@@ -14,7 +13,6 @@ public class AvatarRotationController : MonoBehaviour
     float targetRotation;
     bool isHolding;
     Vector3 lastMousePos;
-    GameObject currentModelGO;
     GameObject bubbleGO;
     MonoBehaviour avatarScaleController;
     AvatarAnimatorController controller;
@@ -23,6 +21,10 @@ public class AvatarRotationController : MonoBehaviour
     Camera trackingCam;
     Vector3 mirroredMainCamPos;
 
+    void Awake()
+    {
+        CurrentModel.OnAwake();
+    }
     void OnEnable()
     {
         CurrentModel.OnAvatarSwitch += OnAvatarSwitch;
@@ -39,9 +41,11 @@ public class AvatarRotationController : MonoBehaviour
     }
     void Update()
     {
+        CurrentModel.OnUpdate();
+
         if (MenuActions.IsMovementBlocked()) return;
         if (UniWindowController.current.isClickThrough && !isHolding) return;
-        if (currentModelGO == null) return;
+        if (CurrentModel.ModelGO == null) return;
 
         if (suppressFrame) avatarWindowHandler.targetCamera = targetCameraOrigin;
 
@@ -54,29 +58,29 @@ public class AvatarRotationController : MonoBehaviour
 
         UpdateHoldingState(alt, leftBtn);
 
-        targetRotation = currentModelGO.transform.localRotation.eulerAngles.y;
+        var currentMousePos = Input.mousePosition;
+        var mouseDeltaX = (lastMousePos - currentMousePos).x;
+        lastMousePos = currentMousePos;
 
-        if (mouseRotation || scrollRotation)
+        if (!(mouseRotation || scrollRotation)) return;
+
+        avatarScaleController.enabled = false;
+
+        targetRotation = CurrentModel.ModelGO.transform.localRotation.eulerAngles.y;
+
+        if (mouseRotation)
         {
-            avatarScaleController.enabled = false;
-            if (mouseRotation)
-            {
-                var currentMousePos = Input.mousePosition;
-                var mouseDeltaX = (lastMousePos - currentMousePos).x;
-                lastMousePos = currentMousePos;
+            targetRotation += mouseDeltaX * mouseRotationSpeed;
 
-                targetRotation += mouseDeltaX * mouseRotationSpeed;
-
-                avatarWindowHandler.targetCamera = null;
-                suppressFrame = true;
-            }
-            else if (scrollRotation)
-            {
-                float scrollDelta = Input.mouseScrollDelta.y;
-                targetRotation += scrollDelta * scrollRotationSpeed;
-            }
+            avatarWindowHandler.targetCamera = null;
+            suppressFrame = true;
         }
-
+        else if (scrollRotation)
+        {
+            float scrollDelta = Input.mouseScrollDelta.y;
+            targetRotation += scrollDelta * scrollRotationSpeed;
+        }
+        
         ApplyRotation();
 
         avatarScaleController.enabled = true;
@@ -87,20 +91,19 @@ public class AvatarRotationController : MonoBehaviour
     }
     void OnAvatarSwitch()
     {
-        currentModelGO = CurrentModel.GameObject;
 
-        controller = CurrentModel.GetComponent<AvatarAnimatorController>();
-        avatarScaleController = CurrentModel.GetComponent<AvatarScaleController>();
+        controller = CurrentModel.AvatarAnimatorControllerProxy.Inst;
+        avatarScaleController = CurrentModel.AvatarScaleControllerProxy.Inst;
 
-        bubbleGO = CurrentModel.GetComponent<AvatarBubbleHandler>().attachTarget;
-        avatarWindowHandler = CurrentModel.GetComponent<AvatarWindowHandler>();
+        bubbleGO = CurrentModel.AvatarBubbleHandlerProxy.Inst.attachTarget;
+        avatarWindowHandler = CurrentModel.AvatarWindowHandlerProxy.Inst;
         targetCameraOrigin = avatarWindowHandler.targetCamera;
 
-        CurrentModel.C<AvatarMouseTracking>.F["mainCam"] = trackingCam;
+        CurrentModel.AvatarMouseTrackingProxy.mainCam = trackingCam;
     }
     void UpdateTrackingCamera()
     {
-        var modelRotation = CurrentModel.GameObject.transform.rotation.eulerAngles.y;
+        var modelRotation = CurrentModel.ModelGO.transform.rotation.eulerAngles.y;
         if (Mathf.Abs(Mathf.DeltaAngle(0f, modelRotation)) <= turnАroundThreshold)
         {
             trackingCam.transform.position = mirroredMainCamPos;
@@ -124,23 +127,23 @@ public class AvatarRotationController : MonoBehaviour
         {
             isHolding = false;
 
-            bool isBigScreenActive = CurrentModel.C<AvatarBigScreenHandler>.Get<bool>("isBigScreenActive");
+            bool isBigScreenActive = CurrentModel.AvatarBigScreenHandlerProxy.isBigScreenActive;
             if (!isBigScreenActive)
             {
-                CurrentModel.C<AvatarAnimatorController>.Set("dragLockTimer", 0f);
-                CurrentModel.C<AvatarAnimatorController>.Set("mouseHeld", true);
+                CurrentModel.AvatarAnimatorControllerProxy.dragLockTimer = 0f;
+                CurrentModel.AvatarAnimatorControllerProxy.mouseHeld = true;
                 controller.BlockDraggingOverride = false;
 
                 if (leftBtn)
                 {
-                    CurrentModel.C<AvatarAnimatorController>.Call("SetDragging", true);
+                    CurrentModel.AvatarAnimatorControllerProxy.SetDragging(true);
                 }
             }
         }
     }
     void ApplyRotation()
     {
-        float currentRotation = currentModelGO.transform.localRotation.eulerAngles.y;
+        float currentRotation = CurrentModel.ModelGO.transform.localRotation.eulerAngles.y;
 
         float t = 1f - Mathf.Pow(1f - smoothFactor, Time.deltaTime * 60f);
         //float t = 1f - Mathf.Exp(-smoothFactor * Time.deltaTime);
@@ -149,7 +152,7 @@ public class AvatarRotationController : MonoBehaviour
         if (Mathf.Abs(smoothedRotation - currentRotation) > 0.0001f)
         {
             Vector3 newRotation = new Vector3(0f, smoothedRotation, 0f);
-            currentModelGO.transform.localEulerAngles = newRotation;
+            CurrentModel.ModelGO.transform.localEulerAngles = newRotation;
             bubbleGO.transform.localEulerAngles = newRotation;
         }
     }
