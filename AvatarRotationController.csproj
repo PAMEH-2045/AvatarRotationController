@@ -32,6 +32,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Resources\AvatarRotationController_Resources.assetbundle" />
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="Assembly-CSharp, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>Dependences\Public.Release.X3.2.0.HOTFIX-1\Assembly-CSharp.dll</HintPath>
@@ -39,6 +42,13 @@
     <Reference Include="Kirurobo.UniWindowController, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>Dependences\Public.Release.X3.2.0.HOTFIX-1\Kirurobo.UniWindowController.dll</HintPath>
+    </Reference>
+    <Reference Include="MEGME, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>Dependences\MEGME.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>Dependences\Mate-Engine_3.3.0_MEGMEv0.1.2c_SDKv3.10.2\UnityEngine.AssetBundleModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -52,6 +62,8 @@
   <ItemGroup>
     <Compile Include="AvatarRotationController.cs" />
     <Compile Include="CurrentModel.cs" />
+    <Compile Include="EResources.cs" />
+    <Compile Include="Settings.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
