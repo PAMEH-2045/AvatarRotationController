@@ -1,53 +1,61 @@
 ﻿using Kirurobo;
 using UnityEngine;
 
-[DefaultExecutionOrder(-10)]
+[DefaultExecutionOrder(-10)] // Should run before AvatarScaleController to disable it properly
 public class AvatarRotationController : MonoBehaviour
 {
-    public float smoothFactor = 0.1f;
-    public float scrollRotationSpeed = 100f;
-    public float mouseRotationSpeed = 5f;
-    public float turnАroundThreshold = 65f;
+    [SerializeField] private float scrollRotationSpeed = 10f;
+    [SerializeField] private float mouseRotationSpeed = 0.5f;
+    [SerializeField] private float turnАroundThreshold = 65f;
+    [SerializeField] private bool turnАround = true;
+    [SerializeField] private bool blockDragging = true;
 
-    bool suppressFrame;
-    float targetRotation;
     bool isHolding;
     Vector3 lastMousePos;
+
     GameObject bubbleGO;
+
     MonoBehaviour avatarScaleController;
     AvatarAnimatorController controller;
+
     AvatarWindowHandler avatarWindowHandler;
     Camera targetCameraOrigin;
-    Camera trackingCam;
-    Vector3 mirroredMainCamPos;
 
-    void Awake()
-    {
-        CurrentModel.OnAwake();
-    }
+    Vector3 mirroredMainCamPos;
+    Camera trackingCam;
+
     void OnEnable()
     {
         CurrentModel.OnAvatarSwitch += OnAvatarSwitch;
     }
     void Start()
     {
+        CurrentModel.OnStart();
+
         trackingCam = transform.GetComponentInChildren<Camera>(true);
         trackingCam.nearClipPlane = Camera.main.nearClipPlane;
         mirroredMainCamPos = new Vector3(
             Camera.main.transform.position.x, 
             Camera.main.transform.position.y,
-            CurrentModel.ModelRoot.position.z - Camera.main.transform.position.z
+            CurrentModel.Root.position.z - Camera.main.transform.position.z
         );
+
+        avatarScaleController = GameObject.FindFirstObjectByType<AvatarScaleController>();
+
+        try
+        {
+            Settings.AddSettings(this);
+        } 
+        catch { }
     }
     void Update()
     {
         CurrentModel.OnUpdate();
 
-        if (MenuActions.IsMovementBlocked()) return;
+        if (CurrentModel.gameObject == null) return;
         if (UniWindowController.current.isClickThrough && !isHolding) return;
-        if (CurrentModel.ModelGO == null) return;
 
-        if (suppressFrame) avatarWindowHandler.targetCamera = targetCameraOrigin;
+        avatarWindowHandler.targetCamera = targetCameraOrigin;
 
         UpdateTrackingCamera();
 
@@ -62,18 +70,17 @@ public class AvatarRotationController : MonoBehaviour
         var mouseDeltaX = (lastMousePos - currentMousePos).x;
         lastMousePos = currentMousePos;
 
-        if (!(mouseRotation || scrollRotation)) return;
+        if (!mouseRotation && !scrollRotation) return;
 
         avatarScaleController.enabled = false;
 
-        targetRotation = CurrentModel.ModelGO.transform.localRotation.eulerAngles.y;
+        var targetRotation = CurrentModel.transform.localRotation.eulerAngles.y;
 
         if (mouseRotation)
         {
             targetRotation += mouseDeltaX * mouseRotationSpeed;
 
             avatarWindowHandler.targetCamera = null;
-            suppressFrame = true;
         }
         else if (scrollRotation)
         {
@@ -81,7 +88,7 @@ public class AvatarRotationController : MonoBehaviour
             targetRotation += scrollDelta * scrollRotationSpeed;
         }
         
-        ApplyRotation();
+        ApplyRotation(targetRotation);
 
         avatarScaleController.enabled = true;
     }
@@ -91,9 +98,7 @@ public class AvatarRotationController : MonoBehaviour
     }
     void OnAvatarSwitch()
     {
-
         controller = CurrentModel.AvatarAnimatorControllerProxy.Inst;
-        avatarScaleController = CurrentModel.AvatarScaleControllerProxy.Inst;
 
         bubbleGO = CurrentModel.AvatarBubbleHandlerProxy.Inst.attachTarget;
         avatarWindowHandler = CurrentModel.AvatarWindowHandlerProxy.Inst;
@@ -103,8 +108,8 @@ public class AvatarRotationController : MonoBehaviour
     }
     void UpdateTrackingCamera()
     {
-        var modelRotation = CurrentModel.ModelGO.transform.rotation.eulerAngles.y;
-        if (Mathf.Abs(Mathf.DeltaAngle(0f, modelRotation)) <= turnАroundThreshold)
+        var modelRotation = CurrentModel.transform.rotation.eulerAngles.y;
+        if (Mathf.Abs(Mathf.DeltaAngle(0f, modelRotation)) <= turnАroundThreshold && turnАround)
         {
             trackingCam.transform.position = mirroredMainCamPos;
         }
@@ -120,7 +125,7 @@ public class AvatarRotationController : MonoBehaviour
             if (!isHolding)
             {
                 isHolding = true;
-                controller.BlockDraggingOverride = true;
+                if (blockDragging) controller.BlockDraggingOverride = true;
             }
         }
         else if (isHolding)
@@ -128,7 +133,7 @@ public class AvatarRotationController : MonoBehaviour
             isHolding = false;
 
             bool isBigScreenActive = CurrentModel.AvatarBigScreenHandlerProxy.isBigScreenActive;
-            if (!isBigScreenActive)
+            if (!isBigScreenActive && blockDragging)
             {
                 CurrentModel.AvatarAnimatorControllerProxy.dragLockTimer = 0f;
                 CurrentModel.AvatarAnimatorControllerProxy.mouseHeld = true;
@@ -141,19 +146,10 @@ public class AvatarRotationController : MonoBehaviour
             }
         }
     }
-    void ApplyRotation()
+    void ApplyRotation(float targetRotation)
     {
-        float currentRotation = CurrentModel.ModelGO.transform.localRotation.eulerAngles.y;
-
-        float t = 1f - Mathf.Pow(1f - smoothFactor, Time.deltaTime * 60f);
-        //float t = 1f - Mathf.Exp(-smoothFactor * Time.deltaTime);
-        float smoothedRotation = Mathf.Lerp(currentRotation, targetRotation, t);
-
-        if (Mathf.Abs(smoothedRotation - currentRotation) > 0.0001f)
-        {
-            Vector3 newRotation = new Vector3(0f, smoothedRotation, 0f);
-            CurrentModel.ModelGO.transform.localEulerAngles = newRotation;
-            bubbleGO.transform.localEulerAngles = newRotation;
-        }
+        Vector3 newRotation = new Vector3(0f, targetRotation, 0f);
+        CurrentModel.transform.localEulerAngles = newRotation;
+        bubbleGO.transform.localEulerAngles = newRotation;
     }
 }

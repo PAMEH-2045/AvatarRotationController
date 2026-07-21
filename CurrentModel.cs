@@ -6,19 +6,18 @@ using UnityEngine;
 public class CurrentModel
 {
     public static event Action OnAvatarSwitch;
-    public static GameObject ModelGO { get; private set; }
-    public static Transform ModelRoot { get; private set; }
+    public static GameObject gameObject { get; private set; }
+    public static Transform Root { get; private set; }
+    public static Transform transform => gameObject.transform;
 
     static readonly float avatarScanInterval = 0.25f;
     static float nextAvatarScan;
 
-    public static void OnAwake()
+    public static void OnStart()
     {
         var modelRootGO = GameObject.Find("Model");
         if (modelRootGO != null)
-            ModelRoot = modelRootGO.transform;
-
-        AvatarScaleControllerProxy.Inst = GameObject.FindFirstObjectByType<AvatarScaleController>();
+            Root = modelRootGO.transform;
     }
     public static void OnUpdate()
     {
@@ -30,14 +29,14 @@ public class CurrentModel
     }
     static void UpdateCurrentAvatar()
     {
-        if (!ModelRoot) return;
+        if (!Root) return;
 
-        for (int i = 0; i < ModelRoot.childCount; i++)
+        for (int i = 0; i < Root.childCount; i++)
         {
-            var child = ModelRoot.GetChild(i).gameObject;
+            var child = Root.GetChild(i).gameObject;
             if (!child.activeInHierarchy) continue;
-            if (ModelGO == child) return;
-            ModelGO = child;
+            if (gameObject == child) return;
+            gameObject = child;
 
             UpdateAvatarComponents();
             OnAvatarSwitch?.Invoke();
@@ -47,12 +46,16 @@ public class CurrentModel
     }
     static void UpdateAvatarComponents()
     {
-        AvatarAnimatorControllerProxy.Inst = ModelGO.GetComponent<AvatarAnimatorController>();
-        AvatarBigScreenHandlerProxy.Inst = ModelGO.GetComponent<AvatarBigScreenHandler>();
-        AvatarMouseTrackingProxy.Inst = ModelGO.GetComponent<AvatarMouseTracking>();
-        AvatarBubbleHandlerProxy.Inst = ModelGO.GetComponent<AvatarBubbleHandler>();
-        AvatarWindowHandlerProxy.Inst = ModelGO.GetComponent<AvatarWindowHandler>();
+        AvatarAnimatorControllerProxy.Inst = GetComponent<AvatarAnimatorController>();
+        AvatarBigScreenHandlerProxy.Inst = GetComponent<AvatarBigScreenHandler>();
+        AvatarMouseTrackingProxy.Inst = GetComponent<AvatarMouseTracking>();
+        AvatarBubbleHandlerProxy.Inst = GetComponent<AvatarBubbleHandler>();
+        AvatarWindowHandlerProxy.Inst = GetComponent<AvatarWindowHandler>();
     }
+    public static T GetComponent<T>() where T : Component
+        => gameObject.GetComponent<T>();
+
+
     public static class AvatarWindowHandlerProxy
     {
         public static AvatarWindowHandler Inst;
@@ -71,10 +74,6 @@ public class CurrentModel
             get => _mainCam.Getter(Inst);
             set => _mainCam.Setter(Inst, value);
         }
-    }
-    public static class AvatarScaleControllerProxy
-    {
-        public static AvatarScaleController Inst;
     }
     public static class AvatarBigScreenHandlerProxy
     {
