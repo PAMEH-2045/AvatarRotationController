@@ -107,6 +107,11 @@ namespace AvatarRotationController
         {
             CurrentModel.OnAvatarSwitch -= OnAvatarSwitch;
         }
+        void OnApplicationQuit()
+        {
+            defaultDeviceOrigin?.Dispose();
+            defaultDeviceOrigin = null;
+        }
         void OnAvatarSwitch()
         {
             controller = CurrentModel.AvatarAnimatorController.Inst;
