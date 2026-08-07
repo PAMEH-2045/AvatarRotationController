@@ -47,6 +47,9 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>Dependences\MEGME.dll</HintPath>
     </Reference>
+    <Reference Include="NAudio.Wasapi">
+      <HintPath>Dependences\Public.Release.X3.3.0-HOTFIX-1\NAudio.Wasapi.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine.AssetBundleModule">
       <HintPath>Dependences\Mate-Engine_3.3.0_MEGMEv0.1.2c_SDKv3.10.2\UnityEngine.AssetBundleModule.dll</HintPath>
     </Reference>
@@ -64,6 +67,7 @@
     <Compile Include="CurrentModel.cs" />
     <Compile Include="EResources.cs" />
     <Compile Include="Settings.cs" />
+    <Compile Include="SpineRotator.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
