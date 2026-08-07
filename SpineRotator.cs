@@ -25,8 +25,10 @@ namespace AvatarRotationController
             {
                 cachedDriverRotation = spineDriver.localRotation;
                 cachedSpineRotation = spineBone.localRotation;
-                cachedChestRotation = chestBone.localRotation;
-                cachedUpperChestRotation = upperChestBone.localRotation;
+                if (chestBone)
+                    cachedChestRotation = chestBone.localRotation;
+                if (upperChestBone)
+                    cachedUpperChestRotation = upperChestBone.localRotation;
             }
         }
         void LateUpdate() // LateUpdate after AvatarMouseTracking
