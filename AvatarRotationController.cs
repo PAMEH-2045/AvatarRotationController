@@ -1,11 +1,9 @@
 ﻿using Kirurobo;
-using NAudio.CoreAudioApi;
 using UnityEngine;
 
 namespace AvatarRotationController
 {
-    [DefaultExecutionOrder(-10)] // Should run before AvatarScaleController to disable it properly
-    public class AvatarRotationController : MonoBehaviour
+    public class AvatarRotationController
     {
         [SerializeField] private float scrollRotationSpeed = 10f;
         [SerializeField] private float mouseRotationSpeed = 0.5f;
@@ -27,19 +25,11 @@ namespace AvatarRotationController
         Vector3 mirroredMainCamPos;
         Camera trackingCam;
 
-        MMDevice defaultDeviceOrigin;
-
         public static bool isTurnedAround;
 
-        void OnEnable()
+        internal void OnStart()
         {
-            CurrentModel.OnAvatarSwitch += OnAvatarSwitch;
-        }
-        void Start()
-        {
-            CurrentModel.OnStart();
-
-            trackingCam = transform.GetComponentInChildren<Camera>(true);
+            trackingCam = LoopManager.Inst.GetComponentInChildren<Camera>(true);
             trackingCam.nearClipPlane = Camera.main.nearClipPlane;
             mirroredMainCamPos = new Vector3(
                 Camera.main.transform.position.x,
@@ -55,10 +45,8 @@ namespace AvatarRotationController
             }
             catch { }
         }
-        void Update()
+        internal void OnPreUpdate()
         {
-            CurrentModel.OnUpdate();
-
             if (CurrentModel.gameObject == null) return;
             if (UniWindowController.current.isClickThrough && !isHolding) return;
 
@@ -99,20 +87,14 @@ namespace AvatarRotationController
 
             avatarScaleController.enabled = true;
         }
-        void LateUpdate()
+        internal void OnPostUpdate()
         {
-            SpineRotator.OnPreLateUpdate();
+            if (isHolding)
+            {
+                CurrentModel.AvatarAnimatorController.isDragging = true;
+            }
         }
-        void OnDisable()
-        {
-            CurrentModel.OnAvatarSwitch -= OnAvatarSwitch;
-        }
-        void OnApplicationQuit()
-        {
-            defaultDeviceOrigin?.Dispose();
-            defaultDeviceOrigin = null;
-        }
-        void OnAvatarSwitch()
+        internal void OnAvatarSwitch()
         {
             controller = CurrentModel.AvatarAnimatorController.Inst;
 
@@ -121,8 +103,6 @@ namespace AvatarRotationController
             targetCameraOrigin = avatarWindowHandler.targetCamera;
 
             CurrentModel.AvatarMouseTracking.mainCam = trackingCam;
-
-            defaultDeviceOrigin = CurrentModel.AvatarAnimatorController.defaultDevice;
         }
         void UpdateTrackingCamera()
         {
@@ -132,8 +112,8 @@ namespace AvatarRotationController
                 {
                     trackingCam.transform.position = Camera.main.transform.position;
                     isTurnedAround = false;
-                }  
-                
+                }
+
                 return;
             }
 
@@ -156,15 +136,12 @@ namespace AvatarRotationController
                 if (!isHolding)
                 {
                     isHolding = true;
-                    CurrentModel.AvatarAnimatorController.defaultDevice = null;
                     if (blockDragging) controller.BlockDraggingOverride = true;
                 }
             }
             else if (isHolding)
             {
                 isHolding = false;
-
-                CurrentModel.AvatarAnimatorController.defaultDevice = defaultDeviceOrigin;
 
                 if (!CurrentModel.IsBigScreenActive && blockDragging)
                 {

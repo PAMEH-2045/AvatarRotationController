@@ -1,5 +1,4 @@
-﻿using NAudio.CoreAudioApi;
-using System;
+﻿using System;
 using System.Linq.Expressions;
 using System.Reflection;
 using UnityEngine;
@@ -120,11 +119,11 @@ namespace AvatarRotationController
                 set => _mouseHeld.Setter(Inst, value);
             }
 
-            static readonly Field<global::AvatarAnimatorController, MMDevice> _defaultDevicee = new("defaultDevice");
-            public static MMDevice defaultDevice
+            static readonly Field<global::AvatarAnimatorController, bool> _isDragging = new("isDragging");
+            public static bool isDragging
             {
-                get => _defaultDevicee.Getter(Inst);
-                set => _defaultDevicee.Setter(Inst, value);
+                get => _isDragging.Getter(Inst);
+                set => _isDragging.Setter(Inst, value);
             }
 
             public static void SetDragging(bool value) => _SetDragging(Inst, value);
@@ -136,15 +135,10 @@ namespace AvatarRotationController
 
             return (TDelegate)Delegate.CreateDelegate(typeof(TDelegate), methodInfo);
         }
-        class Field<TInstance, TField>
+        class Field<TInstance, TField>(string fieldName)
         {
-            public Func<TInstance, TField> Getter;
-            public Action<TInstance, TField> Setter;
-            public Field(string fieldName)
-            {
-                Getter = MakeGetter<TInstance, TField>(fieldName);
-                Setter = MakeSetter<TInstance, TField>(fieldName);
-            }
+            public Func<TInstance, TField> Getter = MakeGetter<TInstance, TField>(fieldName);
+            public Action<TInstance, TField> Setter = MakeSetter<TInstance, TField>(fieldName);
         }
         static Action<TInstance, TField> MakeSetter<TInstance, TField>(string fieldName)
         {

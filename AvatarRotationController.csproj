@@ -66,6 +66,7 @@
     <Compile Include="AvatarRotationController.cs" />
     <Compile Include="CurrentModel.cs" />
     <Compile Include="EResources.cs" />
+    <Compile Include="LoopManager.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="SpineRotator.cs" />
   </ItemGroup>

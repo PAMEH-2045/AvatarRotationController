@@ -2,24 +2,23 @@
 
 namespace AvatarRotationController
 {
-    [DefaultExecutionOrder(+10)] // Should run after AvatarMouseTracking to override its values
-    internal class SpineRotator : MonoBehaviour
+    internal class SpineRotator
     {
-        static Transform spineBone => CurrentModel.AvatarMouseTracking.spineBone;
-        static Transform chestBone => CurrentModel.AvatarMouseTracking.chestBone;
-        static Transform spineDriver => CurrentModel.AvatarMouseTracking.spineDriver;
-        static Transform upperChestBone => CurrentModel.AvatarMouseTracking.upperChestBone;
-        static Quaternion spineInitRot => CurrentModel.AvatarMouseTracking.spineInitRot;
-        static float spineBlend => CurrentModel.AvatarMouseTracking.Inst.spineBlend;
-        static float spineSmoothness => CurrentModel.AvatarMouseTracking.Inst.spineSmoothness;
-        static float spineMinRotation => CurrentModel.AvatarMouseTracking.Inst.spineMinRotation;
-        static float spineMaxRotation => CurrentModel.AvatarMouseTracking.Inst.spineMaxRotation;
+        Transform spineBone => CurrentModel.AvatarMouseTracking.spineBone;
+        Transform chestBone => CurrentModel.AvatarMouseTracking.chestBone;
+        Transform spineDriver => CurrentModel.AvatarMouseTracking.spineDriver;
+        Transform upperChestBone => CurrentModel.AvatarMouseTracking.upperChestBone;
+        Quaternion spineInitRot => CurrentModel.AvatarMouseTracking.spineInitRot;
+        float spineBlend => CurrentModel.AvatarMouseTracking.Inst.spineBlend;
+        float spineSmoothness => CurrentModel.AvatarMouseTracking.Inst.spineSmoothness;
+        float spineMinRotation => CurrentModel.AvatarMouseTracking.Inst.spineMinRotation;
+        float spineMaxRotation => CurrentModel.AvatarMouseTracking.Inst.spineMaxRotation;
 
-        static Quaternion cachedDriverRotation;
-        static Quaternion cachedSpineRotation;
-        static Quaternion cachedChestRotation;
-        static Quaternion cachedUpperChestRotation;
-        internal static void OnPreLateUpdate() // LateUpdate before AvatarMouseTracking
+        Quaternion cachedDriverRotation;
+        Quaternion cachedSpineRotation;
+        Quaternion cachedChestRotation;
+        Quaternion cachedUpperChestRotation;
+        internal void OnPreLateUpdate()
         {
             if (AvatarRotationController.isTurnedAround)
             {
@@ -31,7 +30,7 @@ namespace AvatarRotationController
                     cachedUpperChestRotation = upperChestBone.localRotation;
             }
         }
-        void LateUpdate() // LateUpdate after AvatarMouseTracking
+        internal void OnPostLateUpdate()
         {
             if (AvatarRotationController.isTurnedAround)
             {
